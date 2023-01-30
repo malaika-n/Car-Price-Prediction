@@ -1,0 +1,192 @@
+---
+title: "Math-331 Project 2"
+output: html_document
+date: "2022-12-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Understanding the factors on which the pricing of a car depends in the market
+
+### Objectives- 
+1. Which variables are significant in predicting the price of a car
+2. How well those variables describe the price of a car
+
+### Importing the packages required
+
+```{r}
+library(ggplot2) 
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(class)
+library(lubridate)
+library(splines) #Regression spline functions and classes.
+library(mgcv) #Generalized additive models.
+library(randomForest) #Model the training and test sets
+library(rpart) #Used for building classification and regression trees
+library(rpart.plot)
+```
+
+### Importing the CarPrice dataset which is a large dataset of different types of cars across the American market.
+```{r}
+carPrice<- read.csv("/Users/malaika/Desktop/MATH-331/CarPrice.csv")
+```
+
+### Viewing the dataset
+```{r}
+#carPrice
+```
+
+### Cleaning the dataset
+
+Removing the column car_ID as it does not contribute to our analysis
+```{r}
+carPrice<-subset(carPrice[,-1])
+#carPrice
+```
+
+Splitting the CarName column into two columns: Car Company and Car Model 
+```{r}
+carPrice<- (carPrice %>% 
+  separate(CarName, c('CarCompany', 'CarModel'),' ')%>% 
+    drop_na())
+```
+
+### There are 21 columns (variables) in this data set of different data types: integer, character & numeric
+
+After analyzing the table I found some spelling errors in the CarCompany column that need to be corrected
+
+Using unique() to find unique values within the column
+```{r}
+unique(carPrice$CarCompany)
+```
+
+Correcting the spelling erros within the CarCompany column
+```{r}
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "maxda", "mazda")
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "Nissan", "nissan")
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "porcshce", "porsche")
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "toyouta", "toyota")
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "vokswagen", "volkswagen")
+carPrice$CarCompany <- str_replace(carPrice$CarCompany, "vw", "volkswagen")
+
+#carPrice
+```
+
+Changing the data types of some of the variables to be able to analyze and manipulate them correctly
+
+```{r}
+carPrice$symboling <- as.factor(carPrice$symboling)
+carPrice$CarCompany<-as.factor(carPrice$CarCompany)
+carPrice$fueltype<-as.factor(carPrice$fueltype)
+carPrice$aspiration<-as.factor(carPrice$aspiration)
+carPrice$doornumber<-as.factor(carPrice$doornumber)
+carPrice$carbody<-as.factor(carPrice$carbody)
+carPrice$drivewheel<-as.factor(carPrice$drivewheel)
+carPrice$enginelocation<-as.factor(carPrice$enginelocation)
+carPrice$enginetype<-as.factor(carPrice$enginetype)
+carPrice$cylindernumber<-as.factor(carPrice$cylindernumber)
+carPrice$fuelsystem<-as.factor(carPrice$fuelsystem)
+```
+
+```{r}
+#carPrice
+```
+I wasn't sure what the symboling variable meant so I made a plot to see how the symboling and price were related:
+```{r}
+ggplot(data=carPrice, aes(x=symboling,y=price,fill="red")) + 
+  ylab("price")+
+  geom_boxplot() + 
+  ggtitle("Symboling in relation to price")+
+  labs(caption = "Figure 1")
+```
+* From the above plots the symboling with 0 and 1 values have a high number of rows which means they are sold the most.
+
+* The cars with -1 symboling have the highest price  
+
+* Cars with symboling 3 have the price range similar to -2. There is a dip in price at symboling 1.
+
+### Training the model
+Since we're creating a predictive model we need to split the data into a train and test set. This allows our model to categorize and generalize data it has not worked on before instead of using a specific function that will end up being an overfit (over accurate). By first using the testing set, the model can identify a pattern and then apply it on the testing set to confirm if the model has accurately recognized a generalized pattern. 
+
+Since my response variable is numeric I will be using regression and not classification models.
+
+### Train/test/split the data using a 60/40 random split:
+```{r}
+n <- round( 0.6 * nrow(carPrice)) #no of rows for the sample set=60% 
+  in_train <- sample(1:nrow(carPrice),n) #sample not the rows directly but draw a sample of the row numbers
+#select the rows and columns
+  train <- carPrice[in_train,]#rows
+  test <- carPrice[-in_train,]#not the rows
+  rm(carPrice,in_train)#remove extra variables added and remove carPrice since we've split our dataset 
+  #train2<-train %>% select(-name,-category)
+  
+#write sets to files
+write.csv(train,"train.csv",row.names =FALSE)
+write.csv(test,"test.csv",row.names=FALSE)
+```
+
+### Decision Tree 
+A decision tree is a supervised ML algorithm
+It follows a set of if-else conditions 
+We can visualize the data and classify it according to the conditions
+```{r}
+tree.model <- rpart(price ~ . -CarModel, data=train)
+rpart.plot(tree.model)
+```
+
+I summarized the train set, and use that information to determine which factor variables are important in predicting the response.
+```{r}
+summary(train)
+```
+
+Creating a linear model with price as the response variable and all others as predictors. 
+```{r}
+my.mod<-lm(price~ .-1 -CarModel, data=train)
+summary(my.mod)
+```
+
+```{r}
+my.mod<-lm(price~ .-1 -CarModel, data=test)
+summary(my.mod)
+```
+
+### Random Forest Model
+
+Training the CarPrice dataset using the random forest model.This model builds decision trees on different samples and takes their average in case of regression and provides the highest accuracy.
+```{r}
+rf.model <- randomForest(price ~ .-CarModel, data=train,
+                         ntree=1500,
+                         mtry=5)
+                        
+predictions <- predict(rf.model)
+```
+
+Plotting the random forest model
+```{r}
+plot(rf.model)
+```
+
+```{r}
+sum((predictions-train$price)^2)/length(predictions)
+```
+
+Assess on the test set: Assess the model performance on the test set by retraining the model using the parameter values and the entire train set. 
+```{r}
+predictions <- predict(rf.model, newdata=test)
+sum((predictions-test$price)^2)/length(predictions)
+```
+
+```{r}
+cor(predictions, test$price)^2
+```
+
+
+Finding the most important variables in the model:
+```{r}
+varImpPlot(rf.model)
+```
+
