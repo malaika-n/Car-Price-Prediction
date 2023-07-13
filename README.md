@@ -28,8 +28,10 @@ I wasn’t able to determine which variables were specifically affecting the pri
 </ul>
 
 Through the model I found:
-Train Adjusted R^2 = 0.9884
-Test Adjusted R^2 = 0.9863
+<ul>
+<li>Train Adjusted R^2 = 0.9884</li>
+<li>Test Adjusted R^2 = 0.9863</li>
+</ul>
 
 <ul>
 <li>The R^2 value is extremely high</li>
