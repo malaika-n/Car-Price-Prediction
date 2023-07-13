@@ -71,7 +71,7 @@ Test Adjusted R^2 = 0.9863
 - Engine Size - Boreratio
 - Horse Power - Wheel base
 
-<h3>urther Exploration</h3>
+<h3>Further Exploration</h3>
 <ul>
 <li>Conduct a bivariate analysis and apply the model to certain variables</li>
 <li>Do a cluster model and table on some variables to see how they affect the dataset</li>
